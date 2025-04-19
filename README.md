@@ -80,6 +80,7 @@ The core concept was inspired by the functionality of scholarly text databases l
 In your activated virtual environment after installing packages:
 ```bash
 pip freeze > requirements.txt
+```
 
 ## Building the Executable (using PyInstaller)
 
