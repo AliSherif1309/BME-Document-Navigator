@@ -1,0 +1,27 @@
+# Python specific ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*build*/
+*dist*/
+*.spec
+
+# Virtual environment folder (if you created one inside the project)
+.venv/
+env/
+
+# Database and Config files
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.ini
+
+# OS specific ignores (optional but good practice)
+.DS_Store
+Thumbs.db
+
+# IDE specific folders (optional)
+.vscode/
+.idea/
