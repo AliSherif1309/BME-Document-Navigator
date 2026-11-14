@@ -117,3 +117,13 @@ The application relies on accessing the original document files at the paths sto
 *   Improved Note/Outline interaction.
 *   Document version comparison.
 *   Further UI/UX refinements (more icons, progress indicators, keyboard navigation).
+
+## Maintained source setup
+
+Use Python 3.10 or newer in a virtual environment, then run
+`python -m pip install -r requirements.txt`. Tkinter must be installed with Python
+(on Linux, install your distribution's Python Tk package).
+
+Settings and history now live in the per-user `BMEDocumentNavigator` application data
+folder. Existing files beside the script are copied on first use; originals are
+retained. Set `BMEDOCUMENTNAVIGATOR_DATA_DIR` to select a different data directory.

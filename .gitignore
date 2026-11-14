@@ -25,3 +25,7 @@ Thumbs.db
 # IDE specific folders (optional)
 .vscode/
 .idea/
+# Local Python environments and test output
+.venv/
+__pycache__/
+*.pyc

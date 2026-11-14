@@ -1,6 +1,7 @@
 # START OF FULL SCRIPT (v4 - File Tree Browser, Session, Notes Edit/Del, Outline+, Rank)
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, PanedWindow, Text, Scrollbar, Canvas, Frame, Label, Toplevel, Entry, simpledialog, Menu, Listbox
+from app_storage import data_file
 import sqlite3
 import os
 import sys
@@ -30,8 +31,9 @@ import re # For metadata extraction
 from collections import defaultdict # For managing tab state
 
 # --- Configuration ---
-DATABASE_FILE = 'bme_doc_index.db'
-CONFIG_FILE = 'bme_navigator.ini' # For saving state
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_FILE = data_file('BMEDocumentNavigator', 'bme_doc_index.db', [SCRIPT_DIR, os.getcwd()])
+CONFIG_FILE = data_file('BMEDocumentNavigator', 'bme_navigator.ini', [SCRIPT_DIR, os.getcwd()]) # For saving state
 
 # --- Constants ---
 ZOOM_STEP = 0.2
