@@ -1,6 +1,7 @@
 # Python specific ignores
 __pycache__/
 *.pyc
+.preview-documents/
 *.pyo
 *.pyd
 *build*/
