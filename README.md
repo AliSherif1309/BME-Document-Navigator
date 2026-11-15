@@ -53,7 +53,10 @@ the installed readers. No Node.js installation is needed to run the app.
 | Local HTML workspace | Responsive layout, automatic light/dark appearance, totals, pagination, and `/` to focus search |
 | Search | Words across filenames, BME metadata, and document text; matching page and context for text hits |
 | Filters | Manufacturer, document type, and favorites |
+| Saved searches | Named searches stored with their words, manufacturer/type filters, and favorites view |
 | Metadata | Manufacturer, model, revision/date, status, applicable models, test equipment, keywords |
+| Batch editing | Select a results page, choose fields, and review current/new values before applying |
+| Folder reconnection | Preview and verify identical files at a new folder path while keeping document IDs and history |
 | Notes | Timestamped notes with page references, saved independently of source files |
 | Favorites | Shared with the original desktop application |
 | Automatic indexing | Incremental scans on startup and every five minutes while running; manual scan available |
@@ -81,14 +84,56 @@ Scanned/image-only PDFs need OCR, which is not included yet.
 
 ## Data preservation
 
+### Batch editing and saved searches
+
+Use **Save search** to name the current search and filters. Saved searches persist
+in your library database and can be loaded from the sidebar or **Saved searches**.
+Search names are unique without regard to case. A saved search stores criteria,
+so its results update as your library changes.
+
+Select individual documents or **Select this page**, then choose **Edit selected
+metadata**. Only checked fields are edited; a checked field with a blank value
+explicitly clears that field. Review the current/new values before applying.
+Selection is limited to the current results page and clears when results refresh.
+
+Batch edits and folder reconnections create a database snapshot in the `backups`
+folder beside the library database. All changes apply in one transaction. If an
+affected value or file changes after the preview, the operation stops without
+partially applying changes. Previews are single-use, expire after ten minutes,
+and cannot be applied after restarting the app. Backups are retained until you
+remove them; periodically archive or clean them up to manage disk usage.
+
+### Reconnecting a moved folder
+
+In **Library folders**, choose **Reconnect** beside the previous folder, or
+**Reconnect a moved folder** to enter a previously removed folder path. Enter the
+new folder path and preview the matches. Keep filenames and the relative folder
+structure unchanged. Each file must match the indexed file's content fingerprint.
+Resolve missing files, content differences, and already-indexed destinations
+before applying; this workflow does not merge duplicate library records.
+
+The app updates document paths and registered scan folders while retaining IDs,
+notes, favorites, links, metadata, and searchable text. It never moves files on
+disk. Reconnect before adding/scanning the destination as a separate library folder.
+If an enclosing scan folder still includes an old copy, that copy can be indexed
+again on a later scan; remove the old copy from your scan scope when moving.
+
+The first scan after this update refreshes legacy indexed documents and records
+their fingerprints. If a legacy original is already offline and has no recorded
+fingerprint, reconnect the original and scan it first. The app cannot safely
+verify such a document using its filename alone. Individual file renames and
+changed folder layouts still require future relinking support.
+
+### Offline files and backups
+
 Scans never modify source documents. An unavailable drive, removed scan folder,
 deleted document, or partial traversal does **not** delete records, notes, or
 favorites. Failed text extraction retains the previous index and is retried on
 the next scan. Edited metadata survives future scans.
 
 Missing documents keep their last indexed text, so search may show an offline
-reference. Its details report that the original is unavailable. A renamed/moved
-file currently creates a new record; automatic relinking is future work.
+reference. Its details report that the original is unavailable. Scanning a renamed
+or moved file without first using folder reconnection creates a new record.
 
 The database and original desktop settings live in:
 
@@ -132,6 +177,11 @@ python -m pip install pyinstaller
 python build_app.py
 ```
 
+Existing bundles are protected from replacement by default. Close an existing
+portable app and use `python build_app.py --replace` to rebuild into its folder.
+To keep it running, build separately with `python build_app.py --output dist-updated`
+and verify that bundle with `python smoke_app.py --output dist-updated`.
+
 Distribute the **entire** `dist/BME-Navigator` folder. Windows launches
 `BME-Navigator.exe`; macOS/Linux launch `BME-Navigator` from a terminal. It opens
 the browser and keeps a console for stopping the server. These are portable
@@ -159,7 +209,7 @@ The original Tkinter viewer remains available with tabbed PDFs, zoom, outline,
 document links, batch metadata editing, notes, bookmarks, and session restoration.
 Its scan commands now use the repaired shared engine. Linux may need its
 Python Tk package. The HTML interface does not yet include the desktop viewer's
-outline, links editor, or batch editing.
+outline or links editor. Batch editing is available in both interfaces.
 
 ## Development and verification
 
@@ -171,7 +221,9 @@ node --check web/app.js
 Node is used only for the optional JavaScript syntax check. Tests cover storage
 migration, PDF pages, DOCX tables, metadata preservation, offline drives,
 extraction failures, overlapping folders, filters, browser access boundaries,
-safe downloads, CSV export, and backups. Tests use temporary libraries.
+safe downloads, CSV export, backups, saved searches, batch rollback, folder
+identity, stale previews, and reconnection history. Packaged-app checks also
+exercise saved searches, batch edits, and reconnection. Tests use temporary libraries.
 
 `navigator_core.py` owns indexing/library services; `navigator_web.py` owns the
 local HTTP app; `web/` contains HTML, CSS, and JavaScript; `app_storage.py` handles

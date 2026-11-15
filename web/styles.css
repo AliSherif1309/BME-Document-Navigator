@@ -9,6 +9,127 @@
   --accent:#087f80;
   --soft:#e6f3f1;
 }
+.saved-search-list {
+  overflow-y: auto;
+  max-height: 180px;
+  margin: 0 8px 16px;
+}
+.saved-shortcut {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  color: #b4d0d7;
+  border-color: transparent;
+  text-align: left;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+.saved-name {
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.selection-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 12px 20px;
+  background: var(--soft);
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.selection-bar > button {
+  margin-left: auto;
+  font-size: 12px;
+}
+.check-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.check-label input, .document-check {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.batch-field {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 15px;
+  align-items: center;
+  margin: 12px 0;
+}
+.batch-field > input {
+  margin: 0;
+}
+.batch-field > input:disabled {
+  opacity: .45;
+}
+.change-card {
+  margin: 16px 0;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.change-card h3 {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  margin: 0 0 12px;
+}
+.change-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+.change-table th, .change-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.change-table thead {
+  background: var(--soft);
+}
+.blocked-reason {
+  color: #b54e36;
+  font-size: 12px;
+}
+#relocation-form > label {
+  margin-bottom: 16px;
+}
+@media (max-width: 700px) {
+  .saved-search-list {
+    display: none;
+  }
+  .batch-field {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .path-row {
+    flex-wrap: wrap;
+  }
+  .document-check {
+    width: 19px;
+    height: 19px;
+  }
+}
 * {
   box-sizing:border-box;
 }

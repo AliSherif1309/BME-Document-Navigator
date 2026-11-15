@@ -1,7 +1,9 @@
 """Verify the real portable bundle on its target OS: python smoke_app.py."""
 from pathlib import Path
+import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,7 +15,10 @@ def main():
     import pymupdf
     from docx import Document
     root = Path(__file__).resolve().parent
-    executable = root / 'dist' / 'BME-Navigator' / (
+    parser = argparse.ArgumentParser(description='Verify a portable BME Navigator bundle.')
+    parser.add_argument('--output', type=Path, default=root / 'dist')
+    args = parser.parse_args()
+    executable = args.output.resolve() / 'BME-Navigator' / (
         'BME-Navigator.exe' if sys.platform == 'win32' else 'BME-Navigator')
     with tempfile.TemporaryDirectory() as folder:
         work = Path(folder)
@@ -60,7 +65,23 @@ def main():
                 assert state['result']['added'] == 2, state
                 for query in ('PackagePDFfault123', 'PackageWordfault456'):
                     assert api('api/documents?q=' + query)['total'] == 1, query
-                print('Portable bundle passed: startup, HTML/CSS/JS, PDF/DOCX indexing, and search.')
+                ids = [doc['id'] for doc in api('api/documents')['documents']]
+                api('api/searches', {'name':'Packaged references','filters':{'q':'PackagePDFfault123'}})
+                assert api('api/searches')['searches'][0]['name'] == 'Packaged references'
+                preview = api('api/batch/preview', {'ids':ids,'values':{'status':'Bundle test'}})
+                assert api('api/batch/apply', {'preview_id':preview['preview_id']})['updated'] == 2
+                api('api/notes', {'id':ids[0], 'text':'Keep this note', 'page':1})
+                api('api/favorite', {'id':ids[0]})
+                relocated = work / 'relocated-documents'
+                shutil.copytree(docs, relocated)
+                preview = api('api/relocation/preview', {'old_folder':str(docs),'new_folder':str(relocated)})
+                assert preview['blocked'] == 0, preview
+                assert api('api/relocation/apply', {'preview_id':preview['preview_id']})['updated'] == 2
+                doc = api('api/document?id=' + str(ids[0]))
+                assert doc['notes'][0]['note_text'] == 'Keep this note' and doc['favorite']
+                assert doc['status'] == 'Bundle test' and doc['available']
+                assert api('api/documents?q=PackagePDFfault123')['total'] == 1
+                print('Portable bundle passed: startup, assets, indexing, search, saved searches, batch edits, and folder reconnection.')
             finally:
                 process.terminate()
                 process.wait(timeout=15)

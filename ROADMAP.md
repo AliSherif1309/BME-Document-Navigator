@@ -1,15 +1,16 @@
 # Toward a complete BME reference workspace
 
-This iteration repairs indexing and delivers a local HTML workspace. The stages
-below are planned, not implemented features. Prioritize them with feedback from
-engineers using real document libraries.
+The local HTML workspace now includes reliable indexing, saved searches, batch
+metadata previews, and verified folder reconnection. Bulk operations create a
+backup, reject stale previews, and preserve document history. The stages below
+are future work. Prioritize them with feedback from engineers using real libraries.
 
 ## 1. Dependable library maintenance
 
 - OCR for image-only PDFs with language selection, progress, cancellation, and
   explicit dependencies. Preserve originals and record extraction provenance.
-- File identity and folder relocation to reconnect moved documents while retaining
-  notes, favorites, and links; preview changes before applying them.
+- Extend folder reconnection to individual file renames and reorganized layouts;
+  offer reviewable matches when identical content appears at a different path.
 - Per-document extraction diagnostics, limits for unusually large files, scan
   cancellation, and streaming for very large libraries.
 - Content-hash duplicate detection with a reviewable merge workflow.
@@ -19,8 +20,8 @@ engineers using real document libraries.
 
 - Embedded PDF reader with outline, highlighting, multiple tabs, page bookmarks,
   and persistent reading position.
-- Bring document linking and batch editing from the desktop viewer into HTML.
-- Saved searches, equipment families, manufacturer aliases, and structured tags.
+- Bring the document links editor from the desktop viewer into HTML.
+- Equipment families, manufacturer aliases, and structured tags.
 - Revision comparison and superseded-document relationships that retain history.
 - Work packs grouping manuals, SOPs, notes, and test-equipment references for a
   service task, with export and document provenance.
@@ -50,7 +51,7 @@ engineers using real document libraries.
   architecture/distribution coverage still need acceptance testing.
 - Browser interaction checks use clearly marked sample PDFs, not real equipment
   documentation. There is no formal load test or full accessibility audit yet.
-- OCR, signed installers, team sharing, automatic file relocation, and the
+- OCR, signed installers, team sharing, automatic file matching, and the
   workflow features above remain future work.
 - The original desktop viewer shares the repaired scanner; its remaining large
   GUI module needs a separate refactoring and interaction review.

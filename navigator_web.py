@@ -8,6 +8,7 @@ import sqlite3
 import sys
 import tempfile
 import threading
+import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -28,6 +29,36 @@ class App:
         self.lock = threading.Lock()
         self.state_lock = threading.Lock()
         self.state = {'running': False, 'message': 'Ready to index your library.', 'result': None}
+        self.previews = {}
+
+    def preview(self, kind, body):
+        if not self.lock.acquire(blocking=False):
+            raise ValueError('Wait for the current scan or library operation to finish.')
+        try:
+            if kind == 'batch': plan = self.library.preview_batch(body.get('ids'), body.get('values'))
+            else: plan = self.library.preview_relocation(body.get('old_folder', ''), body.get('new_folder', ''))
+            now = time.monotonic()
+            self.previews = {key: value for key, value in self.previews.items() if value['expires'] > now}
+            if len(self.previews) >= 16: self.previews.pop(next(iter(self.previews)))
+            key = secrets.token_urlsafe(24)
+            self.previews[key] = {'plan': plan, 'expires': now + 600}
+            return {**plan, 'preview_id': key}
+        finally:
+            self.lock.release()
+
+    def apply_preview(self, kind, key):
+        if not self.lock.acquire(blocking=False):
+            raise ValueError('Wait for the current scan or library operation to finish.')
+        try:
+            preview = self.previews.get(key)
+            if not preview or preview['expires'] <= time.monotonic() or preview['plan']['kind'] != kind:
+                raise ValueError('This preview expired or was already used. Preview the changes again.')
+            plan = preview['plan']
+            result = self.library.apply_batch(plan) if kind == 'batch' else self.library.apply_relocation(plan)
+            self.previews.pop(key)
+            return result
+        finally:
+            self.lock.release()
 
     def scan(self):
         if not self.lock.acquire(blocking=False): return False
@@ -99,6 +130,13 @@ def handler_for(app):
                     elif path == '/api/scan':
                         self.send_data({'started': app.scan()}); return
                     elif path == '/api/metadata': app.library.update_metadata(int(body['id']), body)
+                    elif path in ('/api/batch/preview', '/api/relocation/preview'):
+                        self.send_data(app.preview('batch' if '/batch/' in path else 'relocation', body)); return
+                    elif path in ('/api/batch/apply', '/api/relocation/apply'):
+                        self.send_data(app.apply_preview('batch' if '/batch/' in path else 'relocation', str(body.get('preview_id', '')))); return
+                    elif path == '/api/searches':
+                        self.send_data({'id': app.library.save_search(body.get('name', ''), body.get('filters'))}); return
+                    elif path == '/api/searches/delete': app.library.delete_search(int(body['id']))
                     elif path == '/api/notes': app.library.add_note(int(body['id']), str(body.get('text', '')), int(body.get('page', 1)))
                     elif path == '/api/notes/delete':
                         with app.library.connect() as db:
@@ -109,6 +147,7 @@ def handler_for(app):
                     self.send_data({'ok': True}); return
                 def arg(key, default=''): return query.get(key, [default])[0]
                 if path == '/api/stats': self.send_data(app.library.stats())
+                elif path == '/api/searches': self.send_data({'searches': app.library.saved_searches()})
                 elif path == '/api/scan':
                     with app.state_lock: state = dict(app.state)
                     self.send_data(state)

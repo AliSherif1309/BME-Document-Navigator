@@ -114,7 +114,7 @@ class LibraryTests(LibraryFixture):
         self.assertEqual(self.library.search('Secondfault654')['documents'][0]['page_number'], 1)
 
 
-class HTTPTests(LibraryFixture):
+class HTTPFixture(LibraryFixture):
     def setUp(self):
         super().setUp()
         self.create('=formula.html', '<h1>oxygen</h1>')
@@ -137,6 +137,8 @@ class HTTPTests(LibraryFixture):
             headers={**({'X-Navigator-Token': self.app.token} if token else {}), **(headers or {})})
         return urlopen(request, timeout=5)
 
+
+class HTTPTests(HTTPFixture):
     def test_ui_bootstrap_and_api_authorization(self):
         with self.request('/', token=False) as response:
             html = response.read().decode()
