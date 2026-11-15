@@ -18,7 +18,9 @@ class LibraryFixture(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.folder = Path(self.temp.name)
+        # macOS /var aliases and Windows 8.3 temp paths must match the canonical
+        # paths deliberately stored by the library.
+        self.folder = Path(self.temp.name).resolve()
         self.docs = self.folder / 'Philips'
         self.docs.mkdir()
         self.library = Library(self.folder / 'library.db')
