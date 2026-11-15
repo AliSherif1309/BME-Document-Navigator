@@ -9,6 +9,121 @@
   --accent:#087f80;
   --soft:#e6f3f1;
 }
+.reader-dialog {
+  width: min(1440px, 97vw);
+  height: 94vh;
+  max-height: 96vh;
+  padding: 22px;
+}
+.reader-dialog .dialog-heading {
+  margin-bottom: 12px;
+}
+.reader-dialog h2 {
+  font-size: 18px;
+}
+.reader-toolbar, #reader-page-form, #reader-find-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+.reader-toolbar {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.reader-toolbar button, .reader-toolbar .link-button {
+  padding: 9px 11px;
+  font-size: 12px;
+}
+#reader-page {
+  width: 75px;
+}
+#reader-page-form > span {
+  padding: 10px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+#reader-zoom {
+  min-width: 90px;
+}
+.reader-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 20px;
+  padding-top: 15px;
+}
+.reader-outline {
+  max-height: 65vh;
+  overflow: auto;
+}
+.reader-outline h3 {
+  font-size: 13px;
+  margin: 12px 0;
+}
+.outline-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  border-radius: 0;
+  font-size: 12px;
+  padding: 12px 8px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.outline-link[data-level="2"] { padding-left: 20px; }
+.outline-link[data-level="3"] { padding-left: 32px; }
+#reader-find-form label {
+  flex: 1;
+  min-width: 150px;
+}
+#reader-status {
+  min-height: 20px;
+  font-size: 12px;
+}
+.reader-canvas {
+  background: #30424b;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: auto;
+  max-height: 61vh;
+  padding: 20px;
+  min-height: 150px;
+}
+.reader-canvas img {
+  display: block;
+  margin: 0 auto;
+  box-shadow: 0 3px 15px #0004;
+}
+.reader-canvas img[hidden] { display: none; }
+#reader-page-text {
+  background: var(--soft);
+  padding: 16px;
+  max-height: 320px;
+  overflow: auto;
+}
+.link-search-form {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  margin: 20px 0 14px;
+}
+.link-search-form label { flex: 1; }
+.link-add-form {
+  display: grid;
+  gap: 12px;
+}
+.link-add-form select { min-width: 0; }
+.link-add-form > button { justify-self: start; }
+@media (max-width: 800px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .reader-outline { max-height: 170px; }
+  .reader-dialog { padding: 16px; }
+  .reader-canvas { max-height: 55vh; padding: 12px; }
+  .link-search-form { flex-wrap: wrap; }
+}
 .saved-search-list {
   overflow-y: auto;
   max-height: 180px;

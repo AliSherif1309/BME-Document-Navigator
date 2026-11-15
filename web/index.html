@@ -5,7 +5,7 @@
   <meta name="navigator-token" content="__SESSION_TOKEN__">
   <meta name="color-scheme" content="light dark">
   <title>BME Document Navigator</title>
-  <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script>
+  <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script><script src="/reader.js" defer></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -15,6 +15,7 @@
     <button class="nav" id="favorites-nav">☆ <span>Favorites</span></button>
     <button class="nav" id="folders-nav">▱ <span>Library folders</span></button>
     <button class="nav" id="searches-nav">⌕ <span>Saved searches</span></button>
+    <button class="nav" id="bookmarks-nav">⚑ <span>Page bookmarks</span></button>
     <div id="saved-search-list" class="saved-search-list" aria-label="Saved searches"></div>
     <div class="sidebar-bottom"><span class="local-dot"></span> Local &amp; private<small>Your files stay on this computer.<br>No account or cloud upload required.</small></div>
   </aside>
@@ -23,7 +24,7 @@
     <section class="stats" aria-label="Library overview">
       <article><span>Documents</span><strong id="stat-documents">0</strong><small>In your library</small></article>
       <article><span>Searchable content</span><strong id="stat-indexed">0</strong><small>Documents with indexed text</small></article>
-      <article><span>Saved references</span><strong id="stat-favorites">0</strong><small>Favorite documents</small></article>
+      <article><span>Saved references</span><strong id="stat-favorites">0</strong><small>Starred or bookmarked documents</small></article>
       <article><span>Engineering notes</span><strong id="stat-notes">0</strong><small>Saved with page references</small></article>
     </section>
     <section class="library-panel">
@@ -42,6 +43,13 @@
   <dialog id="changes-dialog" class="document-dialog"><div class="dialog-heading"><h2 id="changes-title">Review changes</h2><button data-close="changes-dialog" aria-label="Close change preview">×</button></div><div id="changes-content"></div><p class="help">Applying creates a local library backup first. The preview expires after ten minutes. If files or the affected metadata change, preview again.</p><button id="apply-changes" class="primary" disabled>Apply reviewed changes</button></dialog>
   <dialog id="document-dialog" class="document-dialog"><div class="dialog-heading"><div><span class="eyebrow">DOCUMENT DETAILS</span><h2 id="document-title"></h2></div><button data-close="document-dialog" aria-label="Close document">×</button></div><div id="document-content"></div></dialog>
   <dialog id="scan-dialog"><div class="dialog-heading"><h2>Scan activity</h2><button data-close="scan-dialog" aria-label="Close">×</button></div><pre id="scan-report"></pre></dialog>
+  <dialog id="bookmarks-dialog"><div class="dialog-heading"><h2>Page bookmarks</h2><button data-close="bookmarks-dialog" aria-label="Close page bookmarks">×</button></div><div id="bookmarks-list"></div></dialog>
+  <dialog id="reader-dialog" class="reader-dialog">
+    <div class="dialog-heading"><div><span class="eyebrow">DOCUMENT READER</span><h2 id="reader-title"></h2></div><button data-close="reader-dialog" aria-label="Close reader">×</button></div>
+    <div class="reader-toolbar"><button id="reader-previous">← Previous page</button><form id="reader-page-form"><label>Page<input id="reader-page" type="number" min="1" required></label><span id="reader-count"></span><button>Go</button></form><button id="reader-next">Next page →</button><label>Zoom<select id="reader-zoom"><option value="0.75">75%</option><option value="1">100%</option><option value="1.25" selected>125%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label><button id="reader-add-bookmark">Bookmark page</button><button id="reader-text-toggle" aria-expanded="false">Page text</button><a id="reader-original" class="link-button" target="_blank" rel="noopener">Open original PDF</a></div>
+    <div class="reader-layout"><aside class="reader-outline"><h3>Contents</h3><div id="reader-outline"></div><h3>Bookmarked pages</h3><div id="reader-bookmarks"></div></aside><section class="reader-page-panel" aria-label="PDF page"><form id="reader-find-form"><label>Find phrase on this page<input id="reader-find" maxlength="200" placeholder="e.g. pressure sensor"></label><button>Highlight</button><button id="reader-find-clear" type="button">Clear</button></form><p id="reader-status" role="status"></p><div class="reader-canvas"><img id="reader-image" alt="PDF page" hidden></div><pre id="reader-page-text" hidden tabindex="0" aria-label="Extracted page text"></pre></section></div>
+  </dialog>
+  <dialog id="bookmark-save-dialog"><div class="dialog-heading"><h2>Bookmark this page</h2><button data-close="bookmark-save-dialog" aria-label="Close bookmark form">×</button></div><form id="bookmark-form"><label>Bookmark name<input id="bookmark-name" maxlength="200" required></label><p id="bookmark-page-summary" class="help"></p><button class="primary">Save page bookmark</button></form></dialog>
   <div id="toast" role="alert" hidden></div>
 </body>
 </html>

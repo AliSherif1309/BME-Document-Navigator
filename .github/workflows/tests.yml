@@ -22,4 +22,5 @@ jobs:
         with:
           node-version: '22'
       - run: node --check web/app.js
-      - run: python -m compileall -q navigator_core.py navigator_web.py bme_navigator.py
+      - run: node --check web/reader.js
+      - run: python -m compileall -q navigator_core.py navigator_web.py document_reader.py pdf_support.py bme_navigator.py

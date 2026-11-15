@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from app_storage import data_file
 from navigator_core import FIELDS, Library
+from document_reader import DocumentReader
 
 
 def resource_dir():
@@ -25,6 +26,7 @@ def resource_dir():
 class App:
     def __init__(self, library):
         self.library = library
+        self.reader = DocumentReader(library)
         self.token = secrets.token_urlsafe(32)
         self.lock = threading.Lock()
         self.state_lock = threading.Lock()
@@ -85,7 +87,7 @@ def handler_for(app):
         def log_message(self, format, *args):
             pass
 
-        def send_data(self, data, content_type='application/json; charset=utf-8', status=200, attachment=None):
+        def send_data(self, data, content_type='application/json; charset=utf-8', status=200, attachment=None, headers=None):
             if not isinstance(data, bytes): data = json.dumps(data, ensure_ascii=False).encode('utf-8')
             self.send_response(status)
             self.send_header('Content-Type', content_type)
@@ -94,7 +96,8 @@ def handler_for(app):
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Referrer-Policy', 'no-referrer')
             self.send_header('X-Frame-Options', 'SAMEORIGIN')
-            self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'")
+            self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'")
+            for key, value in (headers or {}).items(): self.send_header(key, str(value))
             if attachment: self.send_header('Content-Disposition', f'attachment; filename="{attachment}"')
             self.end_headers()
             self.wfile.write(data)
@@ -107,10 +110,10 @@ def handler_for(app):
                 parts = urlsplit(self.path)
                 query = parse_qs(parts.query)
                 path = parts.path
-                if not mutate and path in ('/', '/app.js', '/styles.css'):
-                    name = {'/': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css'}[path]
+                if not mutate and path in ('/', '/app.js', '/reader.js', '/styles.css'):
+                    name = {'/': 'index.html', '/app.js': 'app.js', '/reader.js': 'reader.js', '/styles.css': 'styles.css'}[path]
                     content = (resource_dir() / name).read_bytes().replace(b'__SESSION_TOKEN__', app.token.encode())
-                    mime = {'/': 'text/html', '/app.js': 'text/javascript', '/styles.css': 'text/css'}[path]
+                    mime = {'/': 'text/html', '/app.js': 'text/javascript', '/reader.js': 'text/javascript', '/styles.css': 'text/css'}[path]
                     self.send_data(content, mime + '; charset=utf-8'); return
                 token = self.headers.get('X-Navigator-Token', query.get('token', [''])[0])
                 if not secrets.compare_digest(token, app.token):
@@ -130,6 +133,12 @@ def handler_for(app):
                     elif path == '/api/scan':
                         self.send_data({'started': app.scan()}); return
                     elif path == '/api/metadata': app.library.update_metadata(int(body['id']), body)
+                    elif path == '/api/reader/position': app.reader.save_position(int(body['id']), int(body['page']), float(body['zoom']))
+                    elif path == '/api/bookmarks':
+                        self.send_data({'id': app.reader.add_bookmark(int(body['id']), int(body['page']), body.get('name',''))}); return
+                    elif path == '/api/bookmarks/delete': app.library.remove_bookmark(int(body['bookmark_id']))
+                    elif path == '/api/links': app.library.add_link(int(body['id']), int(body['target_id']), body.get('description',''))
+                    elif path == '/api/links/delete': app.library.remove_link(int(body['id']), int(body['link_id']))
                     elif path in ('/api/batch/preview', '/api/relocation/preview'):
                         self.send_data(app.preview('batch' if '/batch/' in path else 'relocation', body)); return
                     elif path in ('/api/batch/apply', '/api/relocation/apply'):
@@ -148,6 +157,13 @@ def handler_for(app):
                 def arg(key, default=''): return query.get(key, [default])[0]
                 if path == '/api/stats': self.send_data(app.library.stats())
                 elif path == '/api/searches': self.send_data({'searches': app.library.saved_searches()})
+                elif path == '/api/bookmarks': self.send_data({'bookmarks': app.library.bookmarks(int(arg('id')) if arg('id') else None)})
+                elif path == '/api/links': self.send_data({'links': app.library.links(int(arg('id')))})
+                elif path == '/api/reader': self.send_data(app.reader.info(int(arg('id'))))
+                elif path == '/api/reader/text': self.send_data({'text': app.reader.text(int(arg('id')), int(arg('page','1')))})
+                elif path == '/api/reader/page':
+                    png, matches = app.reader.render(int(arg('id')), int(arg('page','1')), float(arg('zoom','1.25')), arg('q'))
+                    self.send_data(png, 'image/png', headers={'X-Match-Count': matches})
                 elif path == '/api/scan':
                     with app.state_lock: state = dict(app.state)
                     self.send_data(state)

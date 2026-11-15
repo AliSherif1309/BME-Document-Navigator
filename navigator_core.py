@@ -9,6 +9,7 @@ import re
 import secrets
 import sqlite3
 import time
+from pdf_support import extract_pdf_pages
 
 TEXT_EXTENSIONS = {'.pdf', '.docx', '.txt', '.md', '.csv', '.html', '.htm'}
 SUPPORTED = TEXT_EXTENSIONS | {'.doc', '.rtf', '.xlsx', '.xls', '.pptx', '.ppt',
@@ -51,9 +52,7 @@ class HTMLText(HTMLParser):
 def extract_pages(path):
     ext = path.suffix.lower()
     if ext == '.pdf':
-        import pymupdf as fitz
-        with fitz.open(path) as document:
-            return [(i, page.get_text()) for i, page in enumerate(document)]
+        return extract_pdf_pages(path)
     if ext == '.docx':
         from docx import Document
         document = Document(path)
@@ -133,6 +132,9 @@ class Library:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL UNIQUE COLLATE NOCASE,
                     filters TEXT NOT NULL, created_timestamp REAL NOT NULL);
+                CREATE TABLE IF NOT EXISTS reading_positions (
+                    doc_id INTEGER PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
+                    page_number INTEGER NOT NULL, zoom REAL NOT NULL);
             ''')
 
     @contextmanager
@@ -241,7 +243,8 @@ class Library:
                 clauses.append('EXISTS(SELECT 1 FROM favorites f WHERE f.doc_id=d.id)')
             where = ' WHERE ' + ' AND '.join(clauses) if clauses else ''
             total = db.execute('SELECT count(*) FROM documents d' + where, params).fetchone()[0]
-            rows = db.execute('''SELECT d.*, EXISTS(SELECT 1 FROM favorites f WHERE f.doc_id=d.id) AS favorite
+            rows = db.execute('''SELECT d.*, EXISTS(SELECT 1 FROM favorites f WHERE f.doc_id=d.id
+                    AND f.name=d.filename || ' [#' || d.id || ']' AND f.page_number=0) AS favorite
                 FROM documents d''' + where + ' ORDER BY d.filename COLLATE NOCASE,d.id LIMIT ? OFFSET ?',
                 params + [limit, offset]).fetchall()
             documents = [dict(row) for row in rows]
@@ -261,7 +264,8 @@ class Library:
             doc['available'] = Path(doc['filepath']).is_file()
             doc['notes'] = [dict(r) for r in db.execute(
                 'SELECT * FROM notes WHERE doc_id=? ORDER BY created_timestamp DESC', (doc_id,))]
-            doc['favorite'] = bool(db.execute('SELECT 1 FROM favorites WHERE doc_id=?', (doc_id,)).fetchone())
+            doc['favorite'] = bool(db.execute('SELECT 1 FROM favorites WHERE doc_id=? AND name=? AND page_number=0',
+                (doc_id, f"{doc['filename']} [#{doc_id}]")).fetchone())
             doc['indexed_pages'] = db.execute('SELECT count(*) FROM documents_fts WHERE doc_id=?', (doc_id,)).fetchone()[0]
             return doc
 
@@ -433,9 +437,67 @@ class Library:
     def toggle_favorite(self, doc_id):
         doc = self.details(doc_id)
         with self.connect() as db:
-            if doc['favorite']: db.execute('DELETE FROM favorites WHERE doc_id=?', (doc_id,))
+            if doc['favorite']:
+                db.execute('DELETE FROM favorites WHERE doc_id=? AND name=? AND page_number=0',
+                           (doc_id, f"{doc['filename']} [#{doc_id}]"))
             else: db.execute('INSERT INTO favorites(name,doc_id,page_number) VALUES (?,?,0)',
                              (f"{doc['filename']} [#{doc_id}]", doc_id))
+
+    def bookmarks(self, doc_id=None):
+        with self.connect() as db:
+            return [dict(row) for row in db.execute('''SELECT f.*,d.filename FROM favorites f
+                JOIN documents d ON d.id=f.doc_id
+                WHERE NOT(f.name=d.filename || ' [#' || d.id || ']' AND f.page_number=0)'''
+                + (' AND f.doc_id=?' if doc_id is not None else '') + ' ORDER BY f.name COLLATE NOCASE',
+                (doc_id,) if doc_id is not None else ())]
+
+    def add_bookmark(self, doc_id, page, name):
+        doc = self.details(doc_id)
+        name = str(name).strip() or f"{doc['filename']} — page {page}"
+        if len(name) > 200: raise ValueError('Use a bookmark name of 200 characters or fewer.')
+        if page < 1: raise ValueError('Page must be 1 or greater.')
+        # Keep the shared legacy table readable, with globally unique reference names.
+        if name == f"{doc['filename']} [#{doc_id}]": raise ValueError('Choose a page bookmark name.')
+        with self.connect() as db:
+            try:
+                return db.execute('INSERT INTO favorites(name,doc_id,page_number) VALUES (?,?,?)',
+                                  (name, doc_id, page - 1)).lastrowid
+            except sqlite3.IntegrityError:
+                raise ValueError('A saved reference already uses that name. Choose another name.') from None
+
+    def remove_bookmark(self, bookmark_id):
+        with self.connect() as db:
+            db.execute('''DELETE FROM favorites WHERE fav_id=? AND NOT EXISTS (
+                SELECT 1 FROM documents d WHERE d.id=favorites.doc_id
+                AND favorites.name=d.filename || ' [#' || d.id || ']' AND favorites.page_number=0)''',
+                (bookmark_id,))
+
+    def links(self, doc_id):
+        self.details(doc_id)
+        with self.connect() as db:
+            return [dict(row) for row in db.execute('''SELECT l.link_id,l.source_doc_id,l.target_doc_id,
+                l.description,d.id AS doc_id,d.filename FROM links l JOIN documents d
+                ON d.id=CASE WHEN l.source_doc_id=? THEN l.target_doc_id ELSE l.source_doc_id END
+                WHERE l.source_doc_id=? OR l.target_doc_id=? ORDER BY d.filename COLLATE NOCASE''',
+                (doc_id, doc_id, doc_id))]
+
+    def add_link(self, source_id, target_id, description=''):
+        if source_id == target_id: raise ValueError('Choose a different document to link.')
+        self.details(source_id); self.details(target_id)
+        description = str(description).strip()
+        if len(description) > 2000: raise ValueError('Use a description of 2000 characters or fewer.')
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            if db.execute('''SELECT 1 FROM links WHERE (source_doc_id=? AND target_doc_id=?)
+                OR (source_doc_id=? AND target_doc_id=?)''', (source_id,target_id,target_id,source_id)).fetchone():
+                raise ValueError('These documents are already linked.')
+            db.execute('INSERT INTO links(source_doc_id,target_doc_id,description) VALUES (?,?,?)',
+                       (source_id,target_id,description))
+
+    def remove_link(self, doc_id, link_id):
+        with self.connect() as db:
+            db.execute('DELETE FROM links WHERE link_id=? AND (source_doc_id=? OR target_doc_id=?)',
+                       (link_id,doc_id,doc_id))
 
     def stats(self):
         with self.connect() as db:

@@ -43,7 +43,8 @@ the installed readers. No Node.js installation is needed to run the app.
 1. Open **Library folders** and paste a full folder path from your file manager.
 2. Adding a folder starts a scan, including its subfolders.
 3. Search for a model, fault code, manufacturer, or words from the text.
-4. Open a result to edit metadata, add page-specific notes, or save a favorite.
+4. Open a result, then choose **Read PDF** to use the in-app reader. You can also
+   edit metadata, add page-specific notes, or save a favorite.
 5. Use **Scan details** to see extraction errors and unavailable folders.
 
 ## What works now
@@ -58,9 +59,10 @@ the installed readers. No Node.js installation is needed to run the app.
 | Batch editing | Select a results page, choose fields, and review current/new values before applying |
 | Folder reconnection | Preview and verify identical files at a new folder path while keeping document IDs and history |
 | Notes | Timestamped notes with page references, saved independently of source files |
-| Favorites | Shared with the original desktop application |
+| Favorites and page bookmarks | Shared with the original desktop application; removing a document star retains its page bookmarks |
 | Automatic indexing | Incremental scans on startup and every five minutes while running; manual scan available |
-| PDF access | Opens the PDF at the matching page in browsers that support PDF viewing |
+| PDF reader | Page navigation, outline, zoom, phrase highlighting, extracted text, page bookmarks, and saved reading position |
+| Related documents | Link manuals, SOPs, and references with descriptions; links appear from either document |
 | Other files | Downloads the original for use in its native application |
 | CSV export | Entire library metadata with spreadsheet formula protection |
 | Database backup | Consistent SQLite snapshot including index, notes, favorites, and existing document links |
@@ -81,6 +83,34 @@ plain-text content are treated as one text block.
 RTF, and ZIP/7z/RAR archives. Archives are not unpacked; executables are not indexed
 or launched. HTML downloads as a file rather than executing in the workspace.
 Scanned/image-only PDFs need OCR, which is not included yet.
+
+### Reading and connecting references
+
+Choose **Read PDF** in a document's details to open it inside the workspace. Use
+Previous/Next, the page field, or a Contents entry to navigate. Left/right arrow
+keys also navigate when focus is outside a text field or select control. The app
+remembers the last successfully opened page and zoom for each document. Search
+hits and note-page links open their specific page instead of the saved position.
+
+**Find phrase on this page** highlights up to 200 literal phrase matches on the
+current page. It is separate from the library's word-based full-text search.
+**Page text** provides selectable extracted text; the rendered page itself is an
+image. Scanned pages may have no extractable text until OCR is available. Page
+images are bounded to roughly 12 million pixels and a 6000-pixel maximum dimension.
+Highlighting and rendering never save changes to the source PDF.
+
+Use **Bookmark page** to save a named reference, then load it from the reader or
+**Page bookmarks** in the sidebar. Names are unique across the shared favorites
+table. Existing desktop page bookmarks remain visible. The document star controls
+the app's document-level favorite; removing it leaves page bookmarks intact.
+The Favorites view and saved-reference total include documents saved by either
+method. Password-protected PDFs can still be opened in your own PDF application.
+
+In document details, **Related documents** shows existing links and lets you find
+another document by its filename, metadata, or indexed text. Choose a match, add
+an optional description, and save the link. Either document can then open the
+other. Removing a link changes only the relationship, not either source file,
+library record, note, or bookmark.
 
 ## Data preservation
 
@@ -208,14 +238,16 @@ python bme_navigator.py
 The original Tkinter viewer remains available with tabbed PDFs, zoom, outline,
 document links, batch metadata editing, notes, bookmarks, and session restoration.
 Its scan commands now use the repaired shared engine. Linux may need its
-Python Tk package. The HTML interface does not yet include the desktop viewer's
-outline or links editor. Batch editing is available in both interfaces.
+Python Tk package. The HTML workspace now includes outline navigation, page
+bookmarks, document links, and batch editing; it currently uses a single reader
+instead of the desktop viewer's multiple document tabs.
 
 ## Development and verification
 
 ```sh
 python -m unittest discover -v
 node --check web/app.js
+node --check web/reader.js
 ```
 
 Node is used only for the optional JavaScript syntax check. Tests cover storage
@@ -223,12 +255,16 @@ migration, PDF pages, DOCX tables, metadata preservation, offline drives,
 extraction failures, overlapping folders, filters, browser access boundaries,
 safe downloads, CSV export, backups, saved searches, batch rollback, folder
 identity, stale previews, and reconnection history. Packaged-app checks also
-exercise saved searches, batch edits, and reconnection. Tests use temporary libraries.
+exercise saved searches, batch edits, reconnection, PDF page rendering, outlines,
+highlighting, reading positions, bookmarks, and related documents. Tests use
+temporary libraries and verify that rendering leaves source PDFs unchanged.
 
-`navigator_core.py` owns indexing/library services; `navigator_web.py` owns the
-local HTTP app; `web/` contains HTML, CSS, and JavaScript; `app_storage.py` handles
-per-user storage and migration. See [ROADMAP.md](ROADMAP.md) for future stages and
-current limits.
+`navigator_core.py` owns library services; `navigator_web.py` owns the local HTTP
+app; `document_reader.py` handles PDF reading; `pdf_support.py` keeps new indexing
+and reader PDF operations on a single worker, in line with
+[PyMuPDF's threading guidance](https://pymupdf.readthedocs.io/en/latest/recipes-multiprocessing.html).
+`web/` contains HTML/CSS/JavaScript; `app_storage.py` handles storage and migration.
+See [ROADMAP.md](ROADMAP.md) for future stages and current limits.
 
 ## Credits
 

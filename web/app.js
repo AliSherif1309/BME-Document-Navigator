@@ -4,6 +4,7 @@ const token = document.querySelector('meta[name="navigator-token"]').content;
 let offset = 0, total = 0, favorites = false, selected = null, searchVersion = 0;
 let wasRunning = false, toastTimer, searchTimer;
 let pageDocuments = [], selection = new Map(), currentPreview = null;
+let documentGeneration = 0;
 const labels = {manufacturer:'Manufacturer', device_model:'Device model', document_type:'Document type', revision_number:'Revision', revision_date:'Revision date', status:'Document status', applicable_models:'Applicable models', associated_test_equipment:'Test equipment', keywords:'Keywords'};
 
 function el(tag, text, className) {
@@ -171,15 +172,23 @@ function renderPreview(plan) {
   if(!plan.changes.length) $('changes-content').append(el('p','The selected documents already have those values.','help'));
   $('changes-dialog').showModal();
 }
-async function showDocument(id, page=0) {
-  const doc = await api('/api/document?id=' + id); selected = id;
+async function showDocument(id, page) {
+  const generation=++documentGeneration;
+  const [doc,related]=await Promise.all([api('/api/document?id='+id),api('/api/links?id='+id)]);
+  if(generation!==documentGeneration)return;
+  selected = id;
   $('document-title').textContent = doc.filename;
   const content = $('document-content'); content.replaceChildren();
   content.append(el('p',doc.filepath,'file-path'));
   const actions = el('div',undefined,'detail-actions');
   const open = el('a',doc.filename.toLowerCase().endsWith('.pdf')?'Open PDF':'Download document','link-button');
-  open.href = `/api/file?id=${id}&token=${encodeURIComponent(token)}#page=${Number(page)+1}`; open.target='_blank'; open.rel='noopener';
-  if (doc.available) actions.append(open); else actions.append(el('span','File offline — reconnect its original folder.','badge'));
+  open.href = `/api/file?id=${id}&token=${encodeURIComponent(token)}#page=${Number(page || 0)+1}`; open.target='_blank'; open.rel='noopener';
+  if (doc.available) {
+    if(doc.filename.toLowerCase().endsWith('.pdf')) {
+      const read=el('button','Read PDF','primary'); action(read,()=>openReader(doc,Number.isInteger(page)?page+1:undefined)); actions.append(read);
+    }
+    actions.append(open);
+  } else actions.append(el('span','File offline — reconnect its original folder.','badge'));
   const star = el('button',doc.favorite?'★ Saved':'☆ Save favorite');
   action(star,async()=>{await api('/api/favorite',{id}); await showDocument(id,page); await refresh();});
   actions.append(star); content.append(actions);
@@ -195,16 +204,21 @@ async function showDocument(id, page=0) {
   for (const note of doc.notes) {
     const block = el('div',note.note_text,'note'), remove=el('button','Delete note');
     block.append(el('small',`Page ${Number(note.page_number || 0)+1} · ${new Date(note.created_timestamp*1000).toLocaleString()}`));
+    if(doc.available && doc.filename.toLowerCase().endsWith('.pdf')) {
+      const jump=el('button',`Read page ${Number(note.page_number || 0)+1}`);
+      action(jump,()=>openReader(doc,Number(note.page_number || 0)+1));block.append(jump);
+    }
     action(remove,async()=>{if(!confirm('Delete this note?'))return;await api('/api/notes/delete',{note_id:note.note_id});await showDocument(id,page);await refreshStats();});
     block.append(remove); content.append(block);
   }
   if (!doc.notes.length) content.append(el('p','No notes yet. Record references and observations here.','help'));
   const noteForm=el('form',undefined,'note-form'), textLabel=el('label','Note'), text=el('textarea'), pageLabel=el('label','Page','page-input'), pageInput=el('input');
   text.required=true; text.maxLength=20000; text.rows=3; text.name='text'; textLabel.append(text);
-  pageInput.type='number'; pageInput.min='1'; pageInput.required=true; pageInput.value=Number(page)+1; pageLabel.append(pageInput);
+  pageInput.type='number'; pageInput.min='1'; pageInput.required=true; pageInput.value=Number(page || 0)+1; pageLabel.append(pageInput);
   noteForm.append(textLabel,pageLabel,el('button','Add note','primary'));
   noteForm.addEventListener('submit',async event=>{event.preventDefault();try{await api('/api/notes',{id,text:text.value,page:Number(pageInput.value)});await showDocument(id,page);await refreshStats();}catch(error){toast(error.message);}});
   content.append(noteForm);
+  await renderDocumentLinks(content,doc,page,related.links);
   if (!$('document-dialog').open) $('document-dialog').showModal();
 }
 async function poll() {

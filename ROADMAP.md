@@ -1,8 +1,9 @@
 # Toward a complete BME reference workspace
 
 The local HTML workspace now includes reliable indexing, saved searches, batch
-metadata previews, and verified folder reconnection. Bulk operations create a
-backup, reject stale previews, and preserve document history. The stages below
+metadata previews, verified folder reconnection, an in-app PDF reader, page
+bookmarks, saved reading positions, and related-document links. Bulk operations
+create a backup, reject stale previews, and preserve document history. The stages below
 are future work. Prioritize them with feedback from engineers using real libraries.
 
 ## 1. Dependable library maintenance
@@ -18,9 +19,9 @@ are future work. Prioritize them with feedback from engineers using real librari
 
 ## 2. Complete the reference workflow
 
-- Embedded PDF reader with outline, highlighting, multiple tabs, page bookmarks,
-  and persistent reading position.
-- Bring the document links editor from the desktop viewer into HTML.
+- Multiple reader tabs, back/forward history, and text selection directly on the
+  rendered page. Outline navigation, highlighting, bookmarks, and saved reading
+  position are already available in the single-document reader.
 - Equipment families, manufacturer aliases, and structured tags.
 - Revision comparison and superseded-document relationships that retain history.
 - Work packs grouping manuals, SOPs, notes, and test-equipment references for a

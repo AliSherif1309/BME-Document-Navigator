@@ -26,6 +26,8 @@ def main():
         docs.mkdir()
         with pymupdf.open() as pdf:
             pdf.new_page().insert_text((72, 72), 'PackagePDFfault123')
+            pdf.new_page().insert_text((72, 72), 'PackageReaderPageTwo')
+            pdf.set_toc([[1,'First reference',1],[1,'Second reference',2]])
             pdf.save(docs / 'reference.pdf')
         word = Document()
         word.add_paragraph('PackageWordfault456')
@@ -47,7 +49,7 @@ def main():
                 url = match.group()
                 with urlopen(url, timeout=10) as response: html = response.read().decode()
                 token = re.search(r'name="navigator-token" content="([^"]+)"', html).group(1)
-                for asset in ('app.js', 'styles.css'):
+                for asset in ('app.js', 'reader.js', 'styles.css'):
                     with urlopen(url + asset, timeout=10) as response:
                         assert response.read(), f'Missing asset: {asset}'
                 def api(path, body=None):
@@ -66,6 +68,18 @@ def main():
                 for query in ('PackagePDFfault123', 'PackageWordfault456'):
                     assert api('api/documents?q=' + query)['total'] == 1, query
                 ids = [doc['id'] for doc in api('api/documents')['documents']]
+                pdf_id = api('api/documents?q=PackagePDFfault123')['documents'][0]['id']
+                info = api('api/reader?id='+str(pdf_id))
+                assert info['page_count'] == 2 and info['outline'][1]['page'] == 2
+                request = Request(url+f'api/reader/page?id={pdf_id}&page=2&q=PackageReaderPageTwo',headers={'X-Navigator-Token':token})
+                with urlopen(request,timeout=10) as response:
+                    assert response.headers['Content-Type'] == 'image/png' and response.headers['X-Match-Count'] == '1'
+                    assert response.read().startswith(b'\x89PNG')
+                assert 'PackageReaderPageTwo' in api(f'api/reader/text?id={pdf_id}&page=2')['text']
+                api('api/reader/position',{'id':pdf_id,'page':2,'zoom':1.5})
+                api('api/bookmarks',{'id':pdf_id,'page':2,'name':'Packaged page reference'})
+                api('api/links',{'id':ids[0],'target_id':ids[1],'description':'Packaged related document'})
+                assert api('api/links?id='+str(ids[1]))['links'][0]['doc_id'] == ids[0]
                 api('api/searches', {'name':'Packaged references','filters':{'q':'PackagePDFfault123'}})
                 assert api('api/searches')['searches'][0]['name'] == 'Packaged references'
                 preview = api('api/batch/preview', {'ids':ids,'values':{'status':'Bundle test'}})
@@ -81,7 +95,9 @@ def main():
                 assert doc['notes'][0]['note_text'] == 'Keep this note' and doc['favorite']
                 assert doc['status'] == 'Bundle test' and doc['available']
                 assert api('api/documents?q=PackagePDFfault123')['total'] == 1
-                print('Portable bundle passed: startup, assets, indexing, search, saved searches, batch edits, and folder reconnection.')
+                reader = api('api/reader?id='+str(pdf_id))
+                assert reader['page'] == 2 and reader['bookmarks'][0]['page_number'] == 1
+                print('Portable bundle passed: library workflows, PDF reader, page bookmarks, reading position, and related documents.')
             finally:
                 process.terminate()
                 process.wait(timeout=15)
