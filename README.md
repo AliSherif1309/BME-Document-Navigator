@@ -141,8 +141,13 @@ The **Build portable applications** GitHub Actions workflow builds, smoke-tests,
 and uploads separate Windows, macOS, and Linux artifacts for application pull
 requests, version tags, and manual runs. Regression checks run on all
 three platforms for pushes and pull requests. Artifacts inherit the runner's CPU
-architecture; they do not cover every architecture. Windows has been built locally;
-macOS/Linux still require runner validation. Signing and installers remain planned.
+architecture; they do not cover every architecture. Regression tests, builds, and
+packaged-app checks passed on Windows, macOS, and Linux GitHub runners. Windows
+was also built and exercised locally. Signing and installers remain planned.
+
+GitHub artifact downloads do not preserve executable permissions. After extracting
+a macOS/Linux artifact, run `chmod +x BME-Navigator` inside its application folder
+before launching `./BME-Navigator`. Extract the whole artifact, including `_internal`.
 
 ## Original desktop viewer
 

@@ -45,7 +45,9 @@ engineers using real document libraries.
 
 ## Current acceptance gaps
 
-- macOS/Linux workflows are configured; their runner validation is still needed.
+- Regression suites, portable builds, and packaged PDF/DOCX indexing/search checks
+  pass on Windows, macOS, and Linux GitHub runners. Real-user hardware and broader
+  architecture/distribution coverage still need acceptance testing.
 - Browser interaction checks use clearly marked sample PDFs, not real equipment
   documentation. There is no formal load test or full accessibility audit yet.
 - OCR, signed installers, team sharing, automatic file relocation, and the
