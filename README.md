@@ -137,8 +137,9 @@ Distribute the **entire** `dist/BME-Navigator` folder. Windows launches
 the browser and keeps a console for stopping the server. These are portable
 bundles, not signed installers or a macOS `.app` package.
 
-The manual **Build portable applications** GitHub Actions workflow builds and
-uploads separate Windows, macOS, and Linux artifacts. Regression checks run on all
+The **Build portable applications** GitHub Actions workflow builds, smoke-tests,
+and uploads separate Windows, macOS, and Linux artifacts for application pull
+requests, version tags, and manual runs. Regression checks run on all
 three platforms for pushes and pull requests. Artifacts inherit the runner's CPU
 architecture; they do not cover every architecture. Windows has been built locally;
 macOS/Linux still require runner validation. Signing and installers remain planned.
