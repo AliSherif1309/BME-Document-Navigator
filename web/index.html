@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="navigator-token" content="__SESSION_TOKEN__">
+  <meta name="color-scheme" content="light dark">
+  <title>BME Document Navigator</title>
+  <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script><script src="/reader.js" defer></script><script src="/ocr.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="brand-icon">B</span><span>BME Navigator<small>Your engineering library</small></span></a>
+    <div class="nav-label">WORKSPACE</div>
+    <button class="nav active" id="library-nav">▤ <span>Document library</span></button>
+    <button class="nav" id="favorites-nav">☆ <span>Favorites</span></button>
+    <button class="nav" id="folders-nav">▱ <span>Library folders</span></button>
+    <button class="nav" id="searches-nav">⌕ <span>Saved searches</span></button>
+    <button class="nav" id="bookmarks-nav">⚑ <span>Page bookmarks</span></button>
+    <button class="nav" id="ocr-nav">⌗ <span>Scan text (OCR)</span></button>
+    <div id="saved-search-list" class="saved-search-list" aria-label="Saved searches"></div>
+    <div class="sidebar-bottom"><span class="local-dot"></span> Local &amp; private<small>Your files stay on this computer.<br>No account or cloud upload required.</small></div>
+  </aside>
+  <main>
+    <header><div><span class="eyebrow">BIOMEDICAL ENGINEERING WORKSPACE</span><h1 id="page-title">Document library</h1><p>Find the right reference. Get back to the equipment.</p></div><button class="primary" id="scan">↻ Scan library</button></header>
+    <section class="stats" aria-label="Library overview">
+      <article><span>Documents</span><strong id="stat-documents">0</strong><small>In your library</small></article>
+      <article><span>Searchable content</span><strong id="stat-indexed">0</strong><small>Documents with indexed text</small></article>
+      <article><span>Saved references</span><strong id="stat-favorites">0</strong><small>Starred or bookmarked documents</small></article>
+      <article><span>Engineering notes</span><strong id="stat-notes">0</strong><small>Saved with page references</small></article>
+    </section>
+    <section class="library-panel">
+      <div class="toolbar"><label class="search"><span>⌕</span><input id="query" type="search" placeholder="Search manuals, models, fault codes, or document text…" aria-label="Search library"><kbd>/</kbd></label><button id="save-search">Save search</button><button id="export">Export CSV</button><button id="backup">Back up library</button></div>
+      <div class="filters"><label>Manufacturer<select id="manufacturer"><option value="">All manufacturers</option></select></label><label>Document type<select id="kind"><option value="">All document types</option></select></label><button id="clear">Clear filters</button><span id="result-count" role="status"></span></div>
+      <div class="selection-bar"><label class="check-label"><input id="select-page" type="checkbox">Select this page</label><span id="selection-count" role="status">0 selected</span><button id="batch-edit" disabled>Edit selected metadata</button></div>
+      <div id="documents" class="documents"></div>
+      <div class="pagination"><button id="previous">← Previous</button><span id="page-number"></span><button id="next">Next →</button></div>
+    </section>
+    <footer><span id="scan-status" role="status">Ready to index your library.</span><button id="scan-details">Scan details</button></footer>
+  </main>
+  <dialog id="folders-dialog"><div class="dialog-heading"><div><h2>Library folders</h2><p>Add folders containing manuals, SOPs, and equipment references.</p></div><button data-close="folders-dialog" aria-label="Close">×</button></div><form id="folder-form"><label>Full folder path<input id="folder-path" required placeholder="Paste a folder path from your computer"></label><button class="primary">Add folder</button></form><div id="folder-list"></div><p class="help">Subfolders are included. Available folders are rescanned every five minutes by default. Removing a folder keeps indexed documents, notes, and favorites.</p><button id="reconnect-folder">Reconnect a moved folder</button></dialog>
+  <dialog id="searches-dialog"><div class="dialog-heading"><div><h2>Saved searches</h2><p>Save the current search words, filters, and favorites view for later.</p></div><button data-close="searches-dialog" aria-label="Close saved searches">×</button></div><form id="save-search-form"><label>Search name<input id="search-name" required maxlength="100" placeholder="e.g. Ventilator service references"></label><p id="search-summary" class="help"></p><button class="primary">Save current search</button></form><h3 class="section-title">Your saved searches</h3><div id="searches-list"></div></dialog>
+  <dialog id="batch-dialog"><div class="dialog-heading"><div><h2>Edit selected metadata</h2><p>Only checked fields change. A checked field with an empty value will clear that field.</p></div><button data-close="batch-dialog" aria-label="Close batch edit">×</button></div><p id="batch-summary" class="help"></p><form id="batch-form"><div id="batch-fields"></div><button class="primary">Preview metadata changes</button></form></dialog>
+  <dialog id="relocation-dialog"><div class="dialog-heading"><div><h2>Reconnect a moved folder</h2><p>Reconnect identical files at their new location while preserving notes, favorites, and document links.</p></div><button data-close="relocation-dialog" aria-label="Close folder reconnection">×</button></div><form id="relocation-form"><label>Previous folder path<input id="old-folder" required placeholder="The folder path recorded in your library"></label><label>New folder path<input id="new-folder" required placeholder="Where the same folder now lives"></label><p class="help">Keep the folder structure and filenames the same. Files are verified by content. If a legacy document has no recorded fingerprint, reconnect and scan the original first. No source files are moved.</p><button class="primary">Preview folder reconnection</button></form></dialog>
+  <dialog id="changes-dialog" class="document-dialog"><div class="dialog-heading"><h2 id="changes-title">Review changes</h2><button data-close="changes-dialog" aria-label="Close change preview">×</button></div><div id="changes-content"></div><p class="help">Applying creates a local library backup first. The preview expires after ten minutes. If files or the affected metadata change, preview again.</p><button id="apply-changes" class="primary" disabled>Apply reviewed changes</button></dialog>
+  <dialog id="document-dialog" class="document-dialog"><div class="dialog-heading"><div><span class="eyebrow">DOCUMENT DETAILS</span><h2 id="document-title"></h2></div><button data-close="document-dialog" aria-label="Close document">×</button></div><div id="document-content"></div></dialog>
+  <dialog id="scan-dialog"><div class="dialog-heading"><h2>Scan activity</h2><button data-close="scan-dialog" aria-label="Close">×</button></div><pre id="scan-report"></pre></dialog>
+  <dialog id="bookmarks-dialog"><div class="dialog-heading"><h2>Page bookmarks</h2><button data-close="bookmarks-dialog" aria-label="Close page bookmarks">×</button></div><div id="bookmarks-list"></div></dialog>
+  <dialog id="reader-dialog" class="reader-dialog">
+    <div class="dialog-heading"><div><span class="eyebrow">DOCUMENT READER</span><h2 id="reader-title"></h2></div><button data-close="reader-dialog" aria-label="Close reader">×</button></div>
+    <div class="reader-toolbar"><button id="reader-previous">← Previous page</button><form id="reader-page-form"><label>Page<input id="reader-page" type="number" min="1" required></label><span id="reader-count"></span><button>Go</button></form><button id="reader-next">Next page →</button><label>Zoom<select id="reader-zoom"><option value="0.75">75%</option><option value="1">100%</option><option value="1.25" selected>125%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label><button id="reader-add-bookmark">Bookmark page</button><button id="reader-text-toggle" aria-expanded="false">Page text</button><a id="reader-original" class="link-button" target="_blank" rel="noopener">Open original PDF</a></div>
+    <div class="reader-layout"><aside class="reader-outline"><h3>Contents</h3><div id="reader-outline"></div><h3>Bookmarked pages</h3><div id="reader-bookmarks"></div></aside><section class="reader-page-panel" aria-label="PDF page"><form id="reader-find-form"><label>Find phrase on this page<input id="reader-find" maxlength="200" placeholder="e.g. pressure sensor"></label><button>Highlight</button><button id="reader-find-clear" type="button">Clear</button></form><p id="reader-status" role="status"></p><div class="reader-canvas"><img id="reader-image" alt="PDF page" hidden></div><pre id="reader-page-text" hidden tabindex="0" aria-label="Extracted page text"></pre></section></div>
+  </dialog>
+  <dialog id="bookmark-save-dialog"><div class="dialog-heading"><h2>Bookmark this page</h2><button data-close="bookmark-save-dialog" aria-label="Close bookmark form">×</button></div><form id="bookmark-form"><label>Bookmark name<input id="bookmark-name" maxlength="200" required></label><p id="bookmark-page-summary" class="help"></p><button class="primary">Save page bookmark</button></form></dialog>
+  <dialog id="ocr-dialog"><div class="dialog-heading"><div><h2>Recognize scanned text</h2><p>Make scanned PDF pages searchable. Recognition stays on this computer and leaves the original PDF unchanged.</p></div><button data-close="ocr-dialog" aria-label="Close text recognition">×</button></div>
+    <form id="ocr-setup-form"><label>Language data folder (tessdata)<input id="ocr-tessdata" placeholder="Folder containing .traineddata files"></label><button>Use this folder</button></form><p id="ocr-setup-status" class="help"></p>
+    <form id="ocr-form"><label>PDF document<select id="ocr-document" required><option value="">Choose a PDF</option></select></label><fieldset id="ocr-languages"><legend>Recognition languages (choose up to four)</legend><div id="ocr-language-list"></div></fieldset><div class="metadata-grid"><label>Pages to recognize<select id="ocr-mode"><option value="missing">Pages without native text</option><option value="all">All pages (including mixed text and scans)</option></select></label><label>Resolution<select id="ocr-dpi"><option value="150">150 DPI</option><option value="200" selected>200 DPI</option><option value="300">300 DPI</option></select></label></div><p class="help">For pages with a text header and scanned body, choose All pages. OCR can misread text, symbols, and numbers; check results against the original before using them.</p><button id="ocr-start" class="primary">Start text recognition</button></form>
+    <section class="ocr-activity" aria-label="Recognition activity"><h3>Recognition activity</h3><p id="ocr-job-status" role="status">No OCR job has run yet.</p><progress id="ocr-progress" max="1" value="0"></progress><p id="ocr-job-summary" class="help"></p><button id="ocr-cancel" disabled>Cancel after current page</button></section>
+  </dialog>
+  <div id="toast" role="alert" hidden></div>
+</body>
+</html>

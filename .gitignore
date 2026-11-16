@@ -1,6 +1,9 @@
 # Python specific ignores
 __pycache__/
 *.pyc
+.preview-documents/
+.preview-reconnected-documents/
+.ocr-testdata/
 *.pyo
 *.pyd
 *build*/
