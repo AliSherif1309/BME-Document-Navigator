@@ -6,6 +6,9 @@ permissions:
   contents: read
 jobs:
   test:
+    env:
+      BMEDOCUMENTNAVIGATOR_TESSDATA: ${{ github.workspace }}/.ocr-testdata
+      BME_OCR_REQUIRE_TEST: '1'
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -17,10 +20,12 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: python -m pip install -r requirements.txt
+      - run: python prepare_ocr_test_data.py
       - run: python -m unittest discover -v
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: node --check web/app.js
       - run: node --check web/reader.js
+      - run: node --check web/ocr.js
       - run: python -m compileall -q navigator_core.py navigator_web.py document_reader.py pdf_support.py bme_navigator.py

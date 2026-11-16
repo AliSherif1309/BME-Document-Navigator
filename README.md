@@ -63,6 +63,7 @@ the installed readers. No Node.js installation is needed to run the app.
 | Automatic indexing | Incremental scans on startup and every five minutes while running; manual scan available |
 | PDF reader | Page navigation, outline, zoom, phrase highlighting, extracted text, page bookmarks, and saved reading position |
 | Related documents | Link manuals, SOPs, and references with descriptions; links appear from either document |
+| Local OCR | Recognize scanned PDF pages using installed language packs, with progress, cancellation, provenance, searchable text, and reader highlights |
 | Other files | Downloads the original for use in its native application |
 | CSV export | Entire library metadata with spreadsheet formula protection |
 | Database backup | Consistent SQLite snapshot including index, notes, favorites, and existing document links |
@@ -82,7 +83,63 @@ plain-text content are treated as one text block.
 **Metadata listing:** legacy Office files, spreadsheets, presentations, images,
 RTF, and ZIP/7z/RAR archives. Archives are not unpacked; executables are not indexed
 or launched. HTML downloads as a file rather than executing in the workspace.
-Scanned/image-only PDFs need OCR, which is not included yet.
+Scanned/image-only PDFs can be recognized using the optional local OCR workflow
+below. Language data is installed separately from the application bundle.
+
+### OCR setup on Windows, macOS, and Linux
+
+OCR uses the engine supplied by PyMuPDF and requires Tesseract **language data**.
+This workflow does not require a separate Tesseract command-line executable.
+The app does not download models or upload PDFs automatically. See
+[PyMuPDF's OCR requirements](https://pymupdf.readthedocs.io/en/latest/faq/index.html)
+and the [official Tesseract language-data repository](https://github.com/tesseract-ocr/tessdata_fast).
+
+1. Create a local language-data folder, or use an existing Tesseract `tessdata`
+   folder. The same `.traineddata` files work on Windows, macOS, and Linux.
+2. Download the required files from the official repository, for example
+   `eng.traineddata` for English and `ara.traineddata` for Arabic. Use the raw file
+   download, not a saved HTML page. Keep downloaded language data outside the app
+   distribution folder so application updates do not replace it.
+3. Open **Scan text (OCR)**, paste the full language-data folder path, and choose
+   **Use this folder**. The app lists the installed language codes.
+4. Choose a PDF and up to four languages. Start with **Pages without native text**
+   and 200 DPI. Use **All pages** for documents with a selectable header but a
+   scanned body. Higher resolutions take longer and use more memory.
+5. Start recognition. You can close the dialog and continue browsing. Reopen it
+   to view progress or choose **Cancel after current page**.
+
+You can also set `BMEDOCUMENTNAVIGATOR_TESSDATA` or `TESSDATA_PREFIX` to a tessdata
+folder before launching. An explicit folder saved in the app takes precedence.
+Common system Tesseract data folders are detected automatically. Saving an empty
+folder field clears the app override and restores environment/system detection.
+
+### What OCR changes
+
+Recognized text and word coordinates are stored in the library database with the
+source fingerprint, language codes, resolution, and recognition time. Search hits
+retain their page numbers. The reader's **Page text** and phrase highlights use
+valid cached OCR. Document details display recognition provenance.
+
+The original PDF is unchanged; OCR does not export a new searchable PDF or modify
+the original's text layer. Cancellation takes effect after the active page. Failed
+or cancelled jobs keep the previous index and OCR cache, with no partial commit.
+Notes, favorites, bookmarks, and links are preserved. Automatic scans do not run
+OCR and leave successful cached recognition intact for unchanged files. A changed
+file invalidates the cache when rescanned; rerun recognition for the new revision.
+Folder reconnection retains valid OCR for identical source content.
+
+Recognition is one PDF at a time. Library scans and bulk path/metadata operations
+cannot start until OCR finishes; reader rendering shares the PDF worker and may wait behind
+the active recognition page. OCR allows 150/200/300 DPI, limits each raster to
+20 million pixels, and limits staged text/coordinates to 64 MB per job. Large
+pages may require a lower resolution or a document split. The current workflow
+handles PDF scans; standalone image OCR, deskewing, a persistent job queue, and
+searchable-PDF export remain planned.
+
+OCR can misread fault codes, units, symbols, and numbers. Verify recognized text
+against the source document. Real English recognition is exercised in automated
+tests; other installed languages, including Arabic, still need representative
+document and reading-order acceptance testing.
 
 ### Reading and connecting references
 
@@ -95,7 +152,7 @@ hits and note-page links open their specific page instead of the saved position.
 **Find phrase on this page** highlights up to 200 literal phrase matches on the
 current page. It is separate from the library's word-based full-text search.
 **Page text** provides selectable extracted text; the rendered page itself is an
-image. Scanned pages may have no extractable text until OCR is available. Page
+image. Scanned pages may have no extractable text until recognition completes. Page
 images are bounded to roughly 12 million pixels and a 6000-pixel maximum dimension.
 Highlighting and rendering never save changes to the source PDF.
 
@@ -248,7 +305,16 @@ instead of the desktop viewer's multiple document tabs.
 python -m unittest discover -v
 node --check web/app.js
 node --check web/reader.js
+node --check web/ocr.js
 ```
+
+To include real OCR verification, run `python prepare_ocr_test_data.py`, then set
+`BMEDOCUMENTNAVIGATOR_TESSDATA` to the full `.ocr-testdata` folder path before
+running the tests or `smoke_app.py`. The helper downloads a revision- and
+checksum-pinned English model from the official Tesseract repository. CI requires
+real OCR checks on all three operating systems; the model is test-only and is not
+included in distributed app artifacts. Offline test runs can omit real OCR while
+still exercising cancellation, stale-source, failure, and transaction checks.
 
 Node is used only for the optional JavaScript syntax check. Tests cover storage
 migration, PDF pages, DOCX tables, metadata preservation, offline drives,
@@ -257,10 +323,13 @@ safe downloads, CSV export, backups, saved searches, batch rollback, folder
 identity, stale previews, and reconnection history. Packaged-app checks also
 exercise saved searches, batch edits, reconnection, PDF page rendering, outlines,
 highlighting, reading positions, bookmarks, and related documents. Tests use
-temporary libraries and verify that rendering leaves source PDFs unchanged.
+temporary libraries and verify that rendering and real OCR leave source PDFs
+unchanged. OCR regressions cover setup, authorization, provenance, cancellation,
+failure retention, source changes, cache reuse, search, text, and highlighting.
 
 `navigator_core.py` owns library services; `navigator_web.py` owns the local HTTP
-app; `document_reader.py` handles PDF reading; `pdf_support.py` keeps new indexing
+app; `document_reader.py` handles PDF reading; `ocr_service.py` handles local
+recognition and atomic cache commits; `pdf_support.py` keeps new indexing
 and reader PDF operations on a single worker, in line with
 [PyMuPDF's threading guidance](https://pymupdf.readthedocs.io/en/latest/recipes-multiprocessing.html).
 `web/` contains HTML/CSS/JavaScript; `app_storage.py` handles storage and migration.

@@ -186,6 +186,7 @@ async function showDocument(id, page) {
   if (doc.available) {
     if(doc.filename.toLowerCase().endsWith('.pdf')) {
       const read=el('button','Read PDF','primary'); action(read,()=>openReader(doc,Number.isInteger(page)?page+1:undefined)); actions.append(read);
+      const recognize=el('button','Recognize text'); action(recognize,()=>openOCR(doc));actions.append(recognize);
     }
     actions.append(open);
   } else actions.append(el('span','File offline — reconnect its original folder.','badge'));
@@ -193,6 +194,7 @@ async function showDocument(id, page) {
   action(star,async()=>{await api('/api/favorite',{id}); await showDocument(id,page); await refresh();});
   actions.append(star); content.append(actions);
   content.append(el('p',doc.indexed_pages?`${doc.indexed_pages} text page(s) indexed. Verify document revisions against your approved source before service.`:'No searchable text indexed. Image-only PDFs require OCR; other file types may be listed by metadata only.','help'));
+  if(doc.ocr.pages) content.append(el('p',`OCR text: ${doc.ocr.pages} page(s) · ${doc.ocr.language} · ${doc.ocr.dpi} DPI · ${new Date(doc.ocr.created*1000).toLocaleString()}. Check recognized values against the original.`,'help'));
   const form = el('form'), grid = el('div',undefined,'metadata-grid');
   for (const [field,label] of Object.entries(labels)) {
     const item = el('label',label), input = el('input'); input.name=field; input.value=doc[field]||''; input.maxLength=4000;
@@ -233,7 +235,7 @@ async function poll() {
   } catch(error) { $('scan-status').textContent='Connection lost. Keep the Navigator application running, then reload this page.'; }
   setTimeout(poll,1500);
 }
-action($('scan'),async()=>{await api('/api/scan',{});wasRunning=true;});
+action($('scan'),async()=>{const result=await api('/api/scan',{});if(result.started)wasRunning=true;else toast('A scan, OCR job, or library operation is already running.');});
 action($('folders-nav'),()=> $('folders-dialog').showModal());
 action($('searches-nav'),openSavedSearches);
 action($('save-search'),openSavedSearches);

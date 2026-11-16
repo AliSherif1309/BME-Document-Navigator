@@ -5,7 +5,7 @@
   <meta name="navigator-token" content="__SESSION_TOKEN__">
   <meta name="color-scheme" content="light dark">
   <title>BME Document Navigator</title>
-  <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script><script src="/reader.js" defer></script>
+  <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script><script src="/reader.js" defer></script><script src="/ocr.js" defer></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -16,6 +16,7 @@
     <button class="nav" id="folders-nav">▱ <span>Library folders</span></button>
     <button class="nav" id="searches-nav">⌕ <span>Saved searches</span></button>
     <button class="nav" id="bookmarks-nav">⚑ <span>Page bookmarks</span></button>
+    <button class="nav" id="ocr-nav">⌗ <span>Scan text (OCR)</span></button>
     <div id="saved-search-list" class="saved-search-list" aria-label="Saved searches"></div>
     <div class="sidebar-bottom"><span class="local-dot"></span> Local &amp; private<small>Your files stay on this computer.<br>No account or cloud upload required.</small></div>
   </aside>
@@ -50,6 +51,11 @@
     <div class="reader-layout"><aside class="reader-outline"><h3>Contents</h3><div id="reader-outline"></div><h3>Bookmarked pages</h3><div id="reader-bookmarks"></div></aside><section class="reader-page-panel" aria-label="PDF page"><form id="reader-find-form"><label>Find phrase on this page<input id="reader-find" maxlength="200" placeholder="e.g. pressure sensor"></label><button>Highlight</button><button id="reader-find-clear" type="button">Clear</button></form><p id="reader-status" role="status"></p><div class="reader-canvas"><img id="reader-image" alt="PDF page" hidden></div><pre id="reader-page-text" hidden tabindex="0" aria-label="Extracted page text"></pre></section></div>
   </dialog>
   <dialog id="bookmark-save-dialog"><div class="dialog-heading"><h2>Bookmark this page</h2><button data-close="bookmark-save-dialog" aria-label="Close bookmark form">×</button></div><form id="bookmark-form"><label>Bookmark name<input id="bookmark-name" maxlength="200" required></label><p id="bookmark-page-summary" class="help"></p><button class="primary">Save page bookmark</button></form></dialog>
+  <dialog id="ocr-dialog"><div class="dialog-heading"><div><h2>Recognize scanned text</h2><p>Make scanned PDF pages searchable. Recognition stays on this computer and leaves the original PDF unchanged.</p></div><button data-close="ocr-dialog" aria-label="Close text recognition">×</button></div>
+    <form id="ocr-setup-form"><label>Language data folder (tessdata)<input id="ocr-tessdata" placeholder="Folder containing .traineddata files"></label><button>Use this folder</button></form><p id="ocr-setup-status" class="help"></p>
+    <form id="ocr-form"><label>PDF document<select id="ocr-document" required><option value="">Choose a PDF</option></select></label><fieldset id="ocr-languages"><legend>Recognition languages (choose up to four)</legend><div id="ocr-language-list"></div></fieldset><div class="metadata-grid"><label>Pages to recognize<select id="ocr-mode"><option value="missing">Pages without native text</option><option value="all">All pages (including mixed text and scans)</option></select></label><label>Resolution<select id="ocr-dpi"><option value="150">150 DPI</option><option value="200" selected>200 DPI</option><option value="300">300 DPI</option></select></label></div><p class="help">For pages with a text header and scanned body, choose All pages. OCR can misread text, symbols, and numbers; check results against the original before using them.</p><button id="ocr-start" class="primary">Start text recognition</button></form>
+    <section class="ocr-activity" aria-label="Recognition activity"><h3>Recognition activity</h3><p id="ocr-job-status" role="status">No OCR job has run yet.</p><progress id="ocr-progress" max="1" value="0"></progress><p id="ocr-job-summary" class="help"></p><button id="ocr-cancel" disabled>Cancel after current page</button></section>
+  </dialog>
   <div id="toast" role="alert" hidden></div>
 </body>
 </html>

@@ -2,6 +2,7 @@
 from pathlib import Path
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -49,7 +50,7 @@ def main():
                 url = match.group()
                 with urlopen(url, timeout=10) as response: html = response.read().decode()
                 token = re.search(r'name="navigator-token" content="([^"]+)"', html).group(1)
-                for asset in ('app.js', 'reader.js', 'styles.css'):
+                for asset in ('app.js', 'reader.js', 'ocr.js', 'styles.css'):
                     with urlopen(url + asset, timeout=10) as response:
                         assert response.read(), f'Missing asset: {asset}'
                 def api(path, body=None):
@@ -97,7 +98,40 @@ def main():
                 assert api('api/documents?q=PackagePDFfault123')['total'] == 1
                 reader = api('api/reader?id='+str(pdf_id))
                 assert reader['page'] == 2 and reader['bookmarks'][0]['page_number'] == 1
-                print('Portable bundle passed: library workflows, PDF reader, page bookmarks, reading position, and related documents.')
+                setup = api('api/ocr/setup')
+                if setup['available'] and 'eng' in setup['languages']:
+                    scan_path = relocated / 'ocr-scan.pdf'
+                    with pymupdf.open() as original:
+                        page = original.new_page()
+                        page.insert_text((60,100),'SCANNED SERVICE REFERENCE',fontsize=24)
+                        page.insert_text((60,160),'Pressure sensor calibration',fontsize=24)
+                        image = page.get_pixmap(dpi=150).tobytes('png')
+                    with pymupdf.open() as scanned:
+                        page = scanned.new_page(); page.insert_image(page.rect,stream=image); scanned.save(scan_path)
+                    source = scan_path.read_bytes()
+                    api('api/scan',{})
+                    deadline = time.monotonic()+30
+                    while time.monotonic()<deadline:
+                        scan_state=api('api/scan')
+                        if not scan_state['running']:break
+                        time.sleep(.1)
+                    scan_id=api('api/documents?q=ocr-scan.pdf')['documents'][0]['id']
+                    api('api/ocr',{'id':scan_id,'languages':['eng'],'dpi':200})
+                    deadline=time.monotonic()+60
+                    while time.monotonic()<deadline:
+                        job=api('api/ocr')
+                        if not job['running']:break
+                        time.sleep(.1)
+                    assert not job['running'] and job['result']['ocr_pages']==1,job
+                    assert api('api/documents?q=SCANNED%20SERVICE%20REFERENCE')['total']==1
+                    assert 'calibration' in api(f'api/reader/text?id={scan_id}&page=1')['text'].lower()
+                    assert scan_path.read_bytes()==source
+                    print('Real OCR passed in the portable app; original scanned PDF unchanged.')
+                elif os.environ.get('BME_OCR_REQUIRE_TEST')=='1':
+                    raise AssertionError('Portable OCR check requires English language data.')
+                else:
+                    print('Real OCR check skipped: configure English tessdata to include it.')
+                print('Portable bundle passed: library workflows, PDF reader, page bookmarks, reading position, related documents, and OCR setup.')
             finally:
                 process.terminate()
                 process.wait(timeout=15)

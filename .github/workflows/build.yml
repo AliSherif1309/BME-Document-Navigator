@@ -13,6 +13,9 @@ permissions:
   contents: read
 jobs:
   build:
+    env:
+      BMEDOCUMENTNAVIGATOR_TESSDATA: ${{ github.workspace }}/.ocr-testdata
+      BME_OCR_REQUIRE_TEST: '1'
     strategy:
       fail-fast: false
       matrix:
@@ -25,6 +28,7 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: python -m pip install -r requirements.txt pyinstaller
+      - run: python prepare_ocr_test_data.py
       - run: python -m unittest discover -v
       - run: python build_app.py
       - run: python smoke_app.py

@@ -2,14 +2,15 @@
 
 The local HTML workspace now includes reliable indexing, saved searches, batch
 metadata previews, verified folder reconnection, an in-app PDF reader, page
-bookmarks, saved reading positions, and related-document links. Bulk operations
+bookmarks, saved reading positions, related-document links, and optional local OCR
+with language selection, progress, cancellation, and recognition provenance. Bulk operations
 create a backup, reject stale previews, and preserve document history. The stages below
 are future work. Prioritize them with feedback from engineers using real libraries.
 
 ## 1. Dependable library maintenance
 
-- OCR for image-only PDFs with language selection, progress, cancellation, and
-  explicit dependencies. Preserve originals and record extraction provenance.
+- Extend OCR with standalone-image support, deskewing, a persistent document
+  queue, searchable-PDF export, and representative multilingual acceptance tests.
 - Extend folder reconnection to individual file renames and reorganized layouts;
   offer reviewable matches when identical content appears at a different path.
 - Per-document extraction diagnostics, limits for unusually large files, scan
@@ -52,7 +53,7 @@ are future work. Prioritize them with feedback from engineers using real librari
   architecture/distribution coverage still need acceptance testing.
 - Browser interaction checks use clearly marked sample PDFs, not real equipment
   documentation. There is no formal load test or full accessibility audit yet.
-- OCR, signed installers, team sharing, automatic file matching, and the
+- Signed installers, team sharing, automatic file matching, and the
   workflow features above remain future work.
 - The original desktop viewer shares the repaired scanner; its remaining large
   GUI module needs a separate refactoring and interaction review.

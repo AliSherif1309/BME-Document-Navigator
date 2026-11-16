@@ -135,6 +135,12 @@ class Library:
                 CREATE TABLE IF NOT EXISTS reading_positions (
                     doc_id INTEGER PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
                     page_number INTEGER NOT NULL, zoom REAL NOT NULL);
+                CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY,value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS ocr_pages (
+                    doc_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+                    page_number INTEGER NOT NULL, text TEXT NOT NULL, words TEXT NOT NULL,
+                    language TEXT NOT NULL, dpi INTEGER NOT NULL, source_sha256 TEXT NOT NULL,
+                    created_timestamp REAL NOT NULL, PRIMARY KEY(doc_id,page_number));
             ''')
 
     @contextmanager
@@ -205,6 +211,7 @@ class Library:
                                 db.execute('UPDATE documents SET last_modified=?,filename=? WHERE id=?',
                                            (stamp, name, doc_id))
                                 db.execute('DELETE FROM documents_fts WHERE doc_id=?', (doc_id,))
+                                db.execute('DELETE FROM ocr_pages WHERE doc_id=?', (doc_id,))
                             else:
                                 manufacturer, kind = infer_metadata(path)
                                 doc_id = db.execute('''INSERT INTO documents
@@ -267,7 +274,21 @@ class Library:
             doc['favorite'] = bool(db.execute('SELECT 1 FROM favorites WHERE doc_id=? AND name=? AND page_number=0',
                 (doc_id, f"{doc['filename']} [#{doc_id}]")).fetchone())
             doc['indexed_pages'] = db.execute('SELECT count(*) FROM documents_fts WHERE doc_id=?', (doc_id,)).fetchone()[0]
+            doc['ocr'] = dict(db.execute('''SELECT count(*) AS pages, max(language) AS language,
+                max(dpi) AS dpi,max(created_timestamp) AS created FROM ocr_pages WHERE doc_id=?''', (doc_id,)).fetchone())
             return doc
+
+    def ocr_page(self, doc_id, page):
+        """Use cached OCR only while both index identity and on-disk stat agree."""
+        with self.connect() as db:
+            row = db.execute('''SELECT o.*,d.filepath,f.size,f.mtime_ns FROM ocr_pages o
+                JOIN documents d ON d.id=o.doc_id JOIN document_files f ON f.doc_id=o.doc_id
+                WHERE o.doc_id=? AND o.page_number=? AND o.source_sha256=f.sha256''', (doc_id,page-1)).fetchone()
+        if row is None: return None
+        try: stat = Path(row['filepath']).stat()
+        except OSError: return None
+        if (stat.st_size,stat.st_mtime_ns) != (row['size'],row['mtime_ns']): return None
+        return {**dict(row),'words':json.loads(row['words'])}
 
     def update_metadata(self, doc_id, values):
         self.details(doc_id)

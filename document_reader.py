@@ -1,6 +1,7 @@
 """Read-only PDF rendering and page references for the local workspace."""
 from contextlib import contextmanager
 import math
+import re
 from pathlib import Path
 
 from pdf_support import open_pdf, pdf_task
@@ -53,6 +54,19 @@ class DocumentReader:
             self.check_page(pdf, page)
             source = pdf[page - 1]
             matches = source.search_for(query.strip())[:200] if query.strip() else []
+            cached = self.library.ocr_page(doc_id,page)
+            if query.strip() and cached:
+                terms = re.findall(r'\w+',query.casefold())
+                tokens = [(token,word[:4]) for word in cached['words']
+                          for token in re.findall(r'\w+',str(word[4]).casefold())]
+                if terms:
+                    for index in range(len(tokens)-len(terms)+1):
+                        if [word[0] for word in tokens[index:index+len(terms)]]!=terms: continue
+                        box = pymupdf.Rect(tokens[index][1])
+                        for _,rect in tokens[index+1:index+len(terms)]: box |= pymupdf.Rect(rect)
+                        if not any(abs(box.x0-r.x0)<1 and abs(box.y0-r.y0)<1 and abs(box.x1-r.x1)<1 and abs(box.y1-r.y1)<1 for r in matches):
+                            matches.append(box)
+                        if len(matches)>=200: break
             # Draw only in this in-memory document; never save changes to the source.
             for rectangle in matches:
                 source.draw_rect(rectangle, color=None, fill=(1, .8, .15), fill_opacity=.3, overlay=True)
@@ -65,6 +79,8 @@ class DocumentReader:
     def text(self, doc_id, page):
         with self.document(doc_id) as pdf:
             self.check_page(pdf, page)
+            cached = self.library.ocr_page(doc_id,page)
+            if cached: return cached['text']
             return pdf[page - 1].get_text(sort=True)
 
     @pdf_task

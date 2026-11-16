@@ -9,6 +9,34 @@
   --accent:#087f80;
   --soft:#e6f3f1;
 }
+#ocr-setup-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+#ocr-setup-form label { flex: 1; min-width: 180px; }
+#ocr-form > label { margin: 20px 0; }
+#ocr-languages {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 16px 0;
+  padding: 14px;
+}
+#ocr-language-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  max-height: 180px;
+  overflow: auto;
+}
+.ocr-activity {
+  margin-top: 25px;
+  border-top: 1px solid var(--line);
+  padding-top: 15px;
+}
+.ocr-activity h3 { font-size: 15px; }
+#ocr-progress { width: 100%; accent-color: var(--accent); }
 .reader-dialog {
   width: min(1440px, 97vw);
   height: 94vh;

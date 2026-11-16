@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlsplit
 from app_storage import data_file
 from navigator_core import FIELDS, Library
 from document_reader import DocumentReader
+from ocr_service import OCRService
 
 
 def resource_dir():
@@ -29,6 +30,7 @@ class App:
         self.reader = DocumentReader(library)
         self.token = secrets.token_urlsafe(32)
         self.lock = threading.Lock()
+        self.ocr = OCRService(library,self.lock)
         self.state_lock = threading.Lock()
         self.state = {'running': False, 'message': 'Ready to index your library.', 'result': None}
         self.previews = {}
@@ -110,10 +112,10 @@ def handler_for(app):
                 parts = urlsplit(self.path)
                 query = parse_qs(parts.query)
                 path = parts.path
-                if not mutate and path in ('/', '/app.js', '/reader.js', '/styles.css'):
-                    name = {'/': 'index.html', '/app.js': 'app.js', '/reader.js': 'reader.js', '/styles.css': 'styles.css'}[path]
+                if not mutate and path in ('/', '/app.js', '/reader.js', '/ocr.js', '/styles.css'):
+                    name = {'/': 'index.html', '/app.js': 'app.js', '/reader.js': 'reader.js', '/ocr.js': 'ocr.js', '/styles.css': 'styles.css'}[path]
                     content = (resource_dir() / name).read_bytes().replace(b'__SESSION_TOKEN__', app.token.encode())
-                    mime = {'/': 'text/html', '/app.js': 'text/javascript', '/reader.js': 'text/javascript', '/styles.css': 'text/css'}[path]
+                    mime = {'/': 'text/html', '/app.js': 'text/javascript', '/reader.js': 'text/javascript', '/ocr.js': 'text/javascript', '/styles.css': 'text/css'}[path]
                     self.send_data(content, mime + '; charset=utf-8'); return
                 token = self.headers.get('X-Navigator-Token', query.get('token', [''])[0])
                 if not secrets.compare_digest(token, app.token):
@@ -133,6 +135,11 @@ def handler_for(app):
                     elif path == '/api/scan':
                         self.send_data({'started': app.scan()}); return
                     elif path == '/api/metadata': app.library.update_metadata(int(body['id']), body)
+                    elif path == '/api/ocr/setup':
+                        self.send_data(app.ocr.configure(body.get('tessdata',''))); return
+                    elif path == '/api/ocr':
+                        self.send_data(app.ocr.start(int(body['id']),body.get('languages'),int(body.get('dpi',200)),body.get('mode','missing'))); return
+                    elif path == '/api/ocr/cancel': app.ocr.cancel()
                     elif path == '/api/reader/position': app.reader.save_position(int(body['id']), int(body['page']), float(body['zoom']))
                     elif path == '/api/bookmarks':
                         self.send_data({'id': app.reader.add_bookmark(int(body['id']), int(body['page']), body.get('name',''))}); return
@@ -157,6 +164,8 @@ def handler_for(app):
                 def arg(key, default=''): return query.get(key, [default])[0]
                 if path == '/api/stats': self.send_data(app.library.stats())
                 elif path == '/api/searches': self.send_data({'searches': app.library.saved_searches()})
+                elif path == '/api/ocr/setup': self.send_data(app.ocr.setup())
+                elif path == '/api/ocr': self.send_data(app.ocr.status())
                 elif path == '/api/bookmarks': self.send_data({'bookmarks': app.library.bookmarks(int(arg('id')) if arg('id') else None)})
                 elif path == '/api/links': self.send_data({'links': app.library.links(int(arg('id')))})
                 elif path == '/api/reader': self.send_data(app.reader.info(int(arg('id'))))
@@ -242,6 +251,7 @@ def main():
     except KeyboardInterrupt: pass
     finally:
         stop.set()
+        app.ocr.cancel()
         server.server_close()
 
 
